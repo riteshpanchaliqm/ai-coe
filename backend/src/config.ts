@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+
+// Load .env file for local development (in Docker, env vars come from docker-compose env_file)
 dotenv.config();
 
 export const config = {

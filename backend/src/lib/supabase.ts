@@ -9,7 +9,9 @@ let _adminClient: SupabaseClient | null = null;
  */
 export function getSupabaseAdmin(): SupabaseClient {
   if (!_adminClient) {
-    _adminClient = createClient(config.supabaseUrl, config.supabaseServiceRoleKey);
+    _adminClient = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
+      realtime: { enabled: false },
+    } as any);
   }
   return _adminClient;
 }
