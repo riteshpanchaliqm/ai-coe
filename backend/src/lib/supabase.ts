@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { config } from '../config';
+import ws from 'ws';
 
 let _adminClient: SupabaseClient | null = null;
 
@@ -10,8 +11,10 @@ let _adminClient: SupabaseClient | null = null;
 export function getSupabaseAdmin(): SupabaseClient {
   if (!_adminClient) {
     _adminClient = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
-      realtime: { enabled: false },
-    } as any);
+      realtime: {
+        transport: ws as any,
+      },
+    });
   }
   return _adminClient;
 }
