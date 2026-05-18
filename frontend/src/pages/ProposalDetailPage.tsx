@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/authStore';
 import { StatusTimeline } from '../components/StatusTimeline';
 import { StatusActions } from '../components/StatusActions';
 import { RecommendationForm } from '../components/RecommendationForm';
+import { VerdictForm } from '../components/VerdictForm';
 
 interface Proposal {
   id: string; title: string; department: string; problem_statement: string;
@@ -32,7 +33,8 @@ export function ProposalDetailPage() {
   const [loading, setLoading] = useState(true);
 
   const isReviewer = user?.roles.some((r) => ['reviewer', 'chair'].includes(r));
-  const reviewableStatuses = ['submitted', 'under_triage', 'in_review', 'awaiting_decision'];
+  const isChair = user?.roles.includes('chair');
+  const reviewableStatuses = ['in_review', 'awaiting_decision'];
 
   const fetchData = async () => {
     setLoading(true);
@@ -71,7 +73,21 @@ export function ProposalDetailPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold tracking-tight">{proposal.title}</h1>
-        <Badge>{proposal.status.replace(/_/g, ' ')}</Badge>
+        <Badge>{
+          proposal.status === 'draft' ? 'Draft' :
+          proposal.status === 'submitted' ? 'Submitted' :
+          proposal.status === 'under_triage' ? 'Under Triage' :
+          proposal.status === 'needs_clarification' ? 'Needs Clarification' :
+          proposal.status === 'meeting_scheduled' ? 'Meeting Scheduled' :
+          proposal.status === 'in_review' ? 'In Review' :
+          proposal.status === 'awaiting_decision' ? 'Awaiting Decision' :
+          proposal.status === 'approved' ? 'Approved' :
+          proposal.status === 'approved_with_conditions' ? 'Approved with Conditions' :
+          proposal.status === 'parked' ? 'Parked' :
+          proposal.status === 'rejected' ? 'Rejected' :
+          proposal.status === 'shipped' ? 'Shipped' :
+          proposal.status
+        }</Badge>
       </div>
       <p className="text-sm text-muted-foreground">
         Submitted by {proposal.submitter_name} · {proposal.department} ·{' '}
@@ -95,7 +111,7 @@ export function ProposalDetailPage() {
           </div>
           <Separator />
           <div>
-            <h3 className="font-semibold text-sm mb-1">Proposed AI Solution</h3>
+            <h3 className="font-semibold text-sm mb-1">Proposed Solution</h3>
             <p className="text-sm">{proposal.proposed_solution}</p>
           </div>
           <Separator />
@@ -107,19 +123,30 @@ export function ProposalDetailPage() {
           <div className="flex gap-8">
             <div>
               <h3 className="font-semibold text-sm mb-1">Status</h3>
-              <p className="text-sm">{proposal.current_status?.replace(/_/g, ' ')}</p>
+              <p className="text-sm capitalize">{proposal.current_status === 'nearly_complete' ? 'Nearly Complete' : proposal.current_status === 'partial' ? 'Partially Built' : proposal.current_status}</p>
             </div>
             <div>
               <h3 className="font-semibold text-sm mb-1">Urgency</h3>
-              <p className="text-sm">{proposal.urgency?.replace(/_/g, ' ')}</p>
+              <p className="text-sm">{
+                proposal.urgency === 'two_weeks' ? '2 Weeks' :
+                proposal.urgency === 'one_month' ? '1 Month' :
+                proposal.urgency === 'one_quarter' ? '1 Quarter' :
+                proposal.urgency === 'no_deadline' ? 'No Deadline' :
+                proposal.urgency
+              }</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Recommendation Form (reviewers only) */}
+      {/* Recommendation Form (reviewers only, during review) */}
       {isReviewer && reviewableStatuses.includes(proposal.status) && (
         <RecommendationForm proposalId={id!} onSubmitted={fetchData} />
+      )}
+
+      {/* Verdict Form (Chair only, at awaiting_decision) */}
+      {isChair && proposal.status === 'awaiting_decision' && (
+        <VerdictForm proposalId={id!} onSubmitted={fetchData} />
       )}
 
       {/* Comments */}
@@ -132,11 +159,14 @@ export function ProposalDetailPage() {
             <div key={comment.id} className="p-3 rounded-md bg-muted/50">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-sm font-medium">{comment.author_name}</span>
-                {comment.author_roles.map((role) => (
-                  <Badge key={role} variant="secondary" className="text-[10px]">{role}</Badge>
-                ))}
                 {comment.recommendation && (
-                  <Badge variant="default" className="text-[10px]">{comment.recommendation.replace(/_/g, ' ')}</Badge>
+                  <Badge variant="default" className="text-[10px]">{
+                    comment.recommendation === 'approve' ? 'Approved' :
+                    comment.recommendation === 'approve_with_conditions' ? 'Approved with Conditions' :
+                    comment.recommendation === 'needs_more_info' ? 'Needs More Info' :
+                    comment.recommendation === 'reject' ? 'Rejected' :
+                    comment.recommendation
+                  }</Badge>
                 )}
                 <span className="text-xs text-muted-foreground ml-auto">
                   {new Date(comment.created_at).toLocaleString()}

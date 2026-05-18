@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { api } from '../lib/api';
+import { getStatusLabel } from '../lib/status';
 
 interface Proposal {
   id: string;
@@ -53,7 +54,7 @@ export function ReviewPage() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant="info">{p.status.replace(/_/g, ' ')}</Badge>
+                <Badge variant="info">{getStatusLabel(p.status)}</Badge>
                 <Button size="sm" onClick={() => navigate(`/proposals/${p.id}`)}>
                   Review
                 </Button>

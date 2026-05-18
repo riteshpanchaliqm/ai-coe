@@ -54,6 +54,7 @@ export function SubmitPage() {
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftIdRef = useRef<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState<FormData>({
     title: '', department: '', problem_statement: '', proposed_solution: '',
@@ -87,8 +88,38 @@ export function SubmitPage() {
     return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
   }, [form]);
 
+  const validate = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!form.department) errs.department = 'Department is required';
+    if (!form.title.trim()) errs.title = 'Project title is required';
+    if (form.title.length > 50) errs.title = 'Title must be 50 characters or less';
+    if (!form.problem_statement.trim()) errs.problem_statement = 'Problem statement is required';
+    if (!form.proposed_solution.trim()) errs.proposed_solution = 'Proposed AI solution is required';
+    if (!form.expected_impact.trim()) errs.expected_impact = 'Expected impact is required';
+    if (!form.current_status) errs.current_status = 'Current status is required';
+    if (!form.urgency) errs.urgency = 'Timeline/urgency is required';
+    if (form.urgency === 'two_weeks' && !form.urgency_reason.trim()) {
+      errs.urgency_reason = 'Urgency reason is required when timeline is 2 weeks';
+    }
+    if (form.support_needs.length === 0) errs.support_needs = 'Select at least one support type';
+    if (form.support_needs.includes('Other') && !form.support_other_text.trim()) {
+      errs.support_other_text = 'Please specify the other support needed';
+    }
+    return errs;
+  };
+
   const handleSubmit = async () => {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+
+    const validationErrors = validate();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      // Scroll to first error
+      const firstErrorKey = Object.keys(validationErrors)[0];
+      document.getElementById(`field-${firstErrorKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     try {
       if (draftIdRef.current) {
         await api.patch(`/proposals/${draftIdRef.current}`, { ...form, submit: true });
@@ -113,7 +144,7 @@ export function SubmitPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Submit AI Proposal</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Submit Proposal</h1>
         {saving && <span className="text-xs text-muted-foreground">Saving draft...</span>}
       </div>
 
@@ -128,10 +159,10 @@ export function SubmitPage() {
             <Label>Your Name</Label>
             <Input value={user?.name || ''} disabled />
           </div>
-          <div>
+          <div id="field-department">
             <Label>Department *</Label>
-            <Select value={form.department} onValueChange={(val) => updateField('department', val)}>
-              <SelectTrigger>
+            <Select value={form.department} onValueChange={(val) => { updateField('department', val); setErrors((e) => ({ ...e, department: '' })); }}>
+              <SelectTrigger className={errors.department ? 'border-destructive' : ''}>
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
@@ -140,6 +171,7 @@ export function SubmitPage() {
                 ))}
               </SelectContent>
             </Select>
+            {errors.department && <p className="text-xs text-destructive mt-1">{errors.department}</p>}
           </div>
         </CardContent>
       </Card>
@@ -148,23 +180,27 @@ export function SubmitPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">2. Project Information</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div>
+          <div id="field-title">
             <Label>Project Title * <span className="text-muted-foreground text-xs">({form.title.length}/50)</span></Label>
-            <Input maxLength={50} value={form.title} onChange={(e) => updateField('title', e.target.value)} />
+            <Input maxLength={50} value={form.title} onChange={(e) => { updateField('title', e.target.value); setErrors((er) => ({ ...er, title: '' })); }} className={errors.title ? 'border-destructive' : ''} />
+            {errors.title && <p className="text-xs text-destructive mt-1">{errors.title}</p>}
           </div>
-          <div>
+          <div id="field-problem_statement">
             <Label>Problem Statement * <span className="text-muted-foreground text-xs">({form.problem_statement.length}/500)</span></Label>
-            <Textarea maxLength={500} value={form.problem_statement} onChange={(e) => updateField('problem_statement', e.target.value)} rows={3} />
+            <Textarea maxLength={500} value={form.problem_statement} onChange={(e) => { updateField('problem_statement', e.target.value); setErrors((er) => ({ ...er, problem_statement: '' })); }} rows={3} className={errors.problem_statement ? 'border-destructive' : ''} />
+            {errors.problem_statement && <p className="text-xs text-destructive mt-1">{errors.problem_statement}</p>}
           </div>
-          <div>
-            <Label>Proposed AI Solution * <span className="text-muted-foreground text-xs">({form.proposed_solution.length}/500)</span></Label>
-            <Textarea maxLength={500} value={form.proposed_solution} onChange={(e) => updateField('proposed_solution', e.target.value)} rows={3} />
+          <div id="field-proposed_solution">
+            <Label>Proposed Solution * <span className="text-muted-foreground text-xs">({form.proposed_solution.length}/500)</span></Label>
+            <Textarea maxLength={500} value={form.proposed_solution} onChange={(e) => { updateField('proposed_solution', e.target.value); setErrors((er) => ({ ...er, proposed_solution: '' })); }} rows={3} className={errors.proposed_solution ? 'border-destructive' : ''} />
+            {errors.proposed_solution && <p className="text-xs text-destructive mt-1">{errors.proposed_solution}</p>}
           </div>
-          <div>
+          <div id="field-expected_impact">
             <Label>Expected Impact * <span className="text-muted-foreground text-xs">({form.expected_impact.length}/300)</span></Label>
-            <Textarea maxLength={300} value={form.expected_impact} onChange={(e) => updateField('expected_impact', e.target.value)} rows={2} />
+            <Textarea maxLength={300} value={form.expected_impact} onChange={(e) => { updateField('expected_impact', e.target.value); setErrors((er) => ({ ...er, expected_impact: '' })); }} rows={2} className={errors.expected_impact ? 'border-destructive' : ''} />
+            {errors.expected_impact && <p className="text-xs text-destructive mt-1">{errors.expected_impact}</p>}
           </div>
-          <div>
+          <div id="field-current_status">
             <Label>Current Status *</Label>
             <div className="flex flex-wrap gap-2 mt-1">
               {[
@@ -179,14 +215,15 @@ export function SubmitPage() {
                   type="button"
                   variant={form.current_status === s.value ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => updateField('current_status', s.value)}
+                  onClick={() => { updateField('current_status', s.value); setErrors((er) => ({ ...er, current_status: '' })); }}
                 >
                   {s.label}
                 </Button>
               ))}
             </div>
+            {errors.current_status && <p className="text-xs text-destructive mt-1">{errors.current_status}</p>}
           </div>
-          <div>
+          <div id="field-urgency">
             <Label>Timeline / Urgency *</Label>
             <div className="flex flex-wrap gap-2 mt-1">
               {[
@@ -200,17 +237,19 @@ export function SubmitPage() {
                   type="button"
                   variant={form.urgency === u.value ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => updateField('urgency', u.value)}
+                  onClick={() => { updateField('urgency', u.value); setErrors((er) => ({ ...er, urgency: '' })); }}
                 >
                   {u.label}
                 </Button>
               ))}
             </div>
+            {errors.urgency && <p className="text-xs text-destructive mt-1">{errors.urgency}</p>}
           </div>
           {form.urgency === 'two_weeks' && (
-            <div>
+            <div id="field-urgency_reason">
               <Label>Urgency Reason *</Label>
-              <Input value={form.urgency_reason} onChange={(e) => updateField('urgency_reason', e.target.value)} />
+              <Input value={form.urgency_reason} onChange={(e) => { updateField('urgency_reason', e.target.value); setErrors((er) => ({ ...er, urgency_reason: '' })); }} className={errors.urgency_reason ? 'border-destructive' : ''} />
+              {errors.urgency_reason && <p className="text-xs text-destructive mt-1">{errors.urgency_reason}</p>}
             </div>
           )}
         </CardContent>
@@ -262,7 +301,7 @@ export function SubmitPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">4. Support Needed</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div>
+          <div id="field-support_needs">
             <Label>What support do you need? *</Label>
             <div className="grid grid-cols-2 gap-2 mt-2">
               {SUPPORT_TYPES.map((type) => (
@@ -277,11 +316,13 @@ export function SubmitPage() {
                 </label>
               ))}
             </div>
+            {errors.support_needs && <p className="text-xs text-destructive mt-1">{errors.support_needs}</p>}
           </div>
           {form.support_needs.includes('Other') && (
-            <div>
-              <Label>Other (specify)</Label>
-              <Input value={form.support_other_text} onChange={(e) => updateField('support_other_text', e.target.value)} />
+            <div id="field-support_other_text">
+              <Label>Other (specify) *</Label>
+              <Input value={form.support_other_text} onChange={(e) => { updateField('support_other_text', e.target.value); setErrors((er) => ({ ...er, support_other_text: '' })); }} className={errors.support_other_text ? 'border-destructive' : ''} />
+              {errors.support_other_text && <p className="text-xs text-destructive mt-1">{errors.support_other_text}</p>}
             </div>
           )}
           <div>

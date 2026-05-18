@@ -18,8 +18,8 @@ import {
 const navItems = [
   { label: 'Home', path: '/', icon: Home },
   { label: 'Submit Proposal', path: '/submit', icon: PlusCircle },
-  { label: 'All Proposals', path: '/proposals', icon: List },
-  { label: 'My Proposals', path: '/my-proposals', icon: FileText },
+  { label: 'All Proposals', path: '/proposals', icon: List, roles: ['reviewer', 'chair', 'admin'] },
+  { label: 'My Proposals', path: '/my-proposals', icon: FileText, roles: ['submitter'] },
   { label: 'Guidelines', path: '/guidelines', icon: BookOpen },
   { label: 'Review Queue', path: '/review', icon: ClipboardCheck, roles: ['reviewer', 'chair'] },
 ];
