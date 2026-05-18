@@ -6,7 +6,7 @@ services:
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
-        VITE_BASE_PATH: ${VITE_BASE_PATH:-/ai-coe}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
         VITE_API_BASE_PATH: ${VITE_API_BASE_PATH:-/api/v1/ai-coe}
     container_name: aicoe-frontend
     restart: unless-stopped
@@ -28,23 +28,6 @@ services:
     networks:
       - app-network
 
-  caddy:
-    image: caddy:2-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - app-network
-
-volumes:
-  caddy_data:
-  caddy_config:
-
 networks:
   app-network:
-    driver: bridge
-    name: app-network
+    external: true
