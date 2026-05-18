@@ -1,0 +1,8 @@
+aicoe.iqm.services {
+	# API routes → backend
+	reverse_proxy /api/* aicoe-backend:4000
+	reverse_proxy /health aicoe-backend:4000
+
+	# Everything else → frontend SPA
+	reverse_proxy * aicoe-frontend:3000
+}

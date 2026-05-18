@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Secrets (never commit)
+.env.production
+backend/.env
+backend/.env.production
+frontend/.env
+
+# Keep examples
+!.env.production.example
+!backend/.env.example
+!frontend/.env.example

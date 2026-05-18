@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "applift-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@applift/docs-mcp@latest"
+      ],
+      "env": {
+        "npm_config_registry": "https://nexus.iqm.services/repository/npm-repos-group/"
+      },
+      "autoApprove": [
+        "list_components",
+        "get_component_docs",
+        "get_component_docs",
+        "get_component_docs",
+        "list_sx_topics",
+        "get_sx_doc",
+        "get_sx_doc",
+        "get_sx_doc",
+        "get_sx_values",
+        "search_docs"
+      ]
+    }
+  }
+}
