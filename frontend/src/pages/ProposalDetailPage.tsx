@@ -9,15 +9,17 @@ import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { StatusTimeline } from '../components/StatusTimeline';
 import { StatusActions } from '../components/StatusActions';
-import { RecommendationForm } from '../components/RecommendationForm';
-import { VerdictForm } from '../components/VerdictForm';
+import { CommitteeDecisionPanel } from '../components/CommitteeDecisionPanel';
 import { CompetencyLevelForm } from '../components/CompetencyLevelForm';
+import { getStatusLabel } from '../lib/status';
+import { User, Calendar, Building2, Clock, AlertCircle, MessageSquare, Send } from 'lucide-react';
 
 interface Proposal {
   id: string; title: string; department: string; problem_statement: string;
   proposed_solution: string; expected_impact: string; current_status: string;
   urgency: string; urgency_reason: string; status: string;
   submitter_name: string; submitter_email: string; submitted_at: string;
+  competency_level: number | null;
 }
 
 interface Comment {
@@ -34,8 +36,6 @@ export function ProposalDetailPage() {
   const [loading, setLoading] = useState(true);
 
   const isReviewer = user?.roles.some((r) => ['reviewer', 'chair'].includes(r));
-  const isChair = user?.roles.includes('chair');
-  const reviewableStatuses = ['in_review', 'awaiting_decision'];
 
   const fetchData = async () => {
     setLoading(true);
@@ -66,37 +66,44 @@ export function ProposalDetailPage() {
   };
 
   if (loading || !proposal) {
-    return <p className="text-muted-foreground">Loading...</p>;
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
   }
+
+  const statusVariant = ['approved', 'approved_with_conditions', 'shipped'].includes(proposal.status) ? 'success' :
+    ['rejected'].includes(proposal.status) ? 'destructive' :
+    ['awaiting_decision', 'needs_clarification'].includes(proposal.status) ? 'warning' : 'info';
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">{proposal.title}</h1>
-        <Badge>{
-          proposal.status === 'draft' ? 'Draft' :
-          proposal.status === 'submitted' ? 'Submitted' :
-          proposal.status === 'under_triage' ? 'Under Triage' :
-          proposal.status === 'needs_clarification' ? 'Needs Clarification' :
-          proposal.status === 'meeting_scheduled' ? 'Meeting Scheduled' :
-          proposal.status === 'in_review' ? 'In Review' :
-          proposal.status === 'awaiting_decision' ? 'Awaiting Decision' :
-          proposal.status === 'approved' ? 'Approved' :
-          proposal.status === 'approved_with_conditions' ? 'Approved with Conditions' :
-          proposal.status === 'parked' ? 'Parked' :
-          proposal.status === 'rejected' ? 'Rejected' :
-          proposal.status === 'shipped' ? 'Shipped' :
-          proposal.status
-        }</Badge>
+      <div className="space-y-3">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">{proposal.title}</h1>
+              <Badge variant={statusVariant}>{getStatusLabel(proposal.status)}</Badge>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{proposal.submitter_name}</span>
+              <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />{proposal.department}</span>
+              {proposal.submitted_at && (
+                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{new Date(proposal.submitted_at).toLocaleDateString()}</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Submitted by {proposal.submitter_name} · {proposal.department} ·{' '}
-        {proposal.submitted_at && new Date(proposal.submitted_at).toLocaleDateString()}
-      </p>
 
       {/* Status Timeline */}
-      <StatusTimeline currentStatus={proposal.status} />
+      <Card>
+        <CardContent className="pt-6 pb-4">
+          <StatusTimeline currentStatus={proposal.status} />
+        </CardContent>
+      </Card>
 
       {/* Reviewer Actions */}
       {isReviewer && (
@@ -104,57 +111,103 @@ export function ProposalDetailPage() {
       )}
 
       {/* Proposal Content */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div>
-            <h3 className="font-semibold text-sm mb-1">Problem Statement</h3>
-            <p className="text-sm">{proposal.problem_statement}</p>
-          </div>
-          <Separator />
-          <div>
-            <h3 className="font-semibold text-sm mb-1">Proposed Solution</h3>
-            <p className="text-sm">{proposal.proposed_solution}</p>
-          </div>
-          <Separator />
-          <div>
-            <h3 className="font-semibold text-sm mb-1">Expected Impact</h3>
-            <p className="text-sm">{proposal.expected_impact}</p>
-          </div>
-          <Separator />
-          <div className="flex gap-8">
-            <div>
-              <h3 className="font-semibold text-sm mb-1">Status</h3>
-              <p className="text-sm capitalize">{proposal.current_status === 'nearly_complete' ? 'Nearly Complete' : proposal.current_status === 'partial' ? 'Partially Built' : proposal.current_status}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm mb-1">Urgency</h3>
-              <p className="text-sm">{
-                proposal.urgency === 'two_weeks' ? '2 Weeks' :
-                proposal.urgency === 'one_month' ? '1 Month' :
-                proposal.urgency === 'one_quarter' ? '1 Quarter' :
-                proposal.urgency === 'no_deadline' ? 'No Deadline' :
-                proposal.urgency
-              }</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main content - 2 cols */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-primary" />
+                Problem Statement
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed">{proposal.problem_statement}</p>
+            </CardContent>
+          </Card>
 
-      {/* Recommendation Form (reviewers only, during review) */}
-      {isReviewer && reviewableStatuses.includes(proposal.status) && (
-        <RecommendationForm proposalId={id!} onSubmitted={fetchData} />
-      )}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <svg className="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                Proposed Solution
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed">{proposal.proposed_solution}</p>
+            </CardContent>
+          </Card>
 
-      {/* Verdict Form (Chair only, at awaiting_decision) */}
-      {isChair && proposal.status === 'awaiting_decision' && (
-        <VerdictForm proposalId={id!} onSubmitted={fetchData} />
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <svg className="h-4 w-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Expected Impact
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed">{proposal.expected_impact || '—'}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar - 1 col */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Project Status</p>
+                <p className="text-sm font-medium capitalize">
+                  {proposal.current_status === 'nearly_complete' ? 'Nearly Complete' :
+                   proposal.current_status === 'partial' ? 'Partially Built' :
+                   proposal.current_status}
+                </p>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Timeline</p>
+                <p className="text-sm font-medium flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  {proposal.urgency === 'two_weeks' ? '2 Weeks' :
+                   proposal.urgency === 'one_month' ? '1 Month' :
+                   proposal.urgency === 'one_quarter' ? '1 Quarter' :
+                   'No Deadline'}
+                </p>
+                {proposal.urgency_reason && (
+                  <p className="text-xs text-muted-foreground mt-1">{proposal.urgency_reason}</p>
+                )}
+              </div>
+              {proposal.competency_level !== null && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">AI Competency Level</p>
+                    <Badge variant="default">L{proposal.competency_level}</Badge>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Committee Decision Panel (in_review / awaiting_decision) */}
+      {isReviewer && ['in_review', 'awaiting_decision'].includes(proposal.status) && (
+        <CommitteeDecisionPanel
+          proposalId={id!}
+          proposalStatus={proposal.status}
+          onUpdated={fetchData}
+        />
       )}
 
       {/* Competency Level (reviewers/chair, on approved proposals) */}
       {isReviewer && ['approved', 'approved_with_conditions', 'shipped'].includes(proposal.status) && (
         <CompetencyLevelForm
           proposalId={id!}
-          currentLevel={(proposal as any).competency_level}
+          currentLevel={proposal.competency_level}
           onUpdated={fetchData}
         />
       )}
@@ -162,41 +215,64 @@ export function ProposalDetailPage() {
       {/* Comments */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Discussion ({comments.length})</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Discussion ({comments.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {comments.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-6">No comments yet. Start the discussion below.</p>
+          )}
+
           {comments.map((comment) => (
-            <div key={comment.id} className="p-3 rounded-md bg-muted/50">
-              <div className="flex items-center gap-2 mb-1">
+            <div key={comment.id} className="p-4 rounded-lg bg-muted/40 border border-border/50 transition-colors hover:bg-muted/60">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">
+                  {comment.author_name?.charAt(0) || 'U'}
+                </div>
                 <span className="text-sm font-medium">{comment.author_name}</span>
                 {comment.recommendation && (
-                  <Badge variant="default" className="text-[10px]">{
-                    comment.recommendation === 'approve' ? 'Approved' :
-                    comment.recommendation === 'approve_with_conditions' ? 'Approved with Conditions' :
-                    comment.recommendation === 'needs_more_info' ? 'Needs More Info' :
-                    comment.recommendation === 'reject' ? 'Rejected' :
-                    comment.recommendation
-                  }</Badge>
+                  <Badge variant={
+                    comment.recommendation === 'approve' ? 'success' :
+                    comment.recommendation === 'reject' ? 'destructive' :
+                    comment.recommendation === 'needs_more_info' ? 'warning' : 'default'
+                  } className="text-[10px]">
+                    {comment.recommendation === 'approve' ? 'Approved' :
+                     comment.recommendation === 'approve_with_conditions' ? 'Approved with Conditions' :
+                     comment.recommendation === 'needs_more_info' ? 'Needs More Info' :
+                     comment.recommendation === 'reject' ? 'Rejected' :
+                     comment.recommendation}
+                  </Badge>
                 )}
                 <span className="text-xs text-muted-foreground ml-auto">
                   {new Date(comment.created_at).toLocaleString()}
                 </span>
               </div>
-              <p className="text-sm">{comment.body}</p>
+              <p className="text-sm pl-9 leading-relaxed">{comment.body}</p>
             </div>
           ))}
 
           <Separator className="my-4" />
 
-          <div className="space-y-2">
-            <Textarea
-              placeholder="Add a comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              rows={3}
-            />
-            <div className="flex justify-end">
-              <Button size="sm" onClick={postComment}>Post Comment</Button>
+          <div className="flex gap-3 items-start">
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0 mt-1">
+              {user?.name?.charAt(0) || 'U'}
+            </div>
+            <div className="flex-1 space-y-2">
+              <Textarea
+                placeholder="Add a comment..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+              <div className="flex justify-end">
+                <Button size="sm" onClick={postComment} disabled={!newComment.trim()} className="gap-1.5">
+                  <Send className="h-3.5 w-3.5" />
+                  Post Comment
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
