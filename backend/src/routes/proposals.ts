@@ -116,7 +116,6 @@ proposalsRouter.get('/:id', authenticate, async (req: Request, res: Response, ne
 proposalsRouter.post('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { submit, ...body } = req.body;
-    const data = createProposalSchema.parse(body);
 
     const status = submit ? 'submitted' : 'draft';
     const submittedAt = submit ? new Date().toISOString() : null;
@@ -132,23 +131,23 @@ proposalsRouter.post('/', authenticate, async (req: Request, res: Response, next
       .from('proposals')
       .insert({
         submitter_id: req.user!.id,
-        title: data.title,
-        department: data.department,
-        problem_statement: data.problem_statement,
-        proposed_solution: data.proposed_solution,
-        expected_impact: data.expected_impact,
-        current_status: data.current_status,
-        urgency: data.urgency,
-        urgency_reason: data.urgency_reason || null,
+        title: body.title || '',
+        department: body.department || '',
+        problem_statement: body.problem_statement || '',
+        proposed_solution: body.proposed_solution || '',
+        expected_impact: body.expected_impact || '',
+        current_status: body.current_status || null,
+        urgency: body.urgency || null,
+        urgency_reason: body.urgency_reason || null,
         status,
         submitted_at: submittedAt,
         guidelines_version: activeGuideline?.version || null,
-        tech_frontend: req.body.tech_frontend || [],
-        tech_backend: req.body.tech_backend || [],
-        tech_database: req.body.tech_database || [],
-        tech_ai_tools: req.body.tech_ai_tools || [],
-        tech_integrations: req.body.tech_integrations || [],
-        other_details: req.body.other_details || null,
+        tech_frontend: body.tech_frontend || [],
+        tech_backend: body.tech_backend || [],
+        tech_database: body.tech_database || [],
+        tech_ai_tools: body.tech_ai_tools || [],
+        tech_integrations: body.tech_integrations || [],
+        other_details: body.other_details || null,
       })
       .select()
       .single();
@@ -156,11 +155,11 @@ proposalsRouter.post('/', authenticate, async (req: Request, res: Response, next
     if (error) throw new AppError(error.message, 500);
 
     // Insert support needs
-    if (data.support_needs?.length) {
-      const supportRows = data.support_needs.map((type: string) => ({
+    if (body.support_needs?.length) {
+      const supportRows = body.support_needs.map((type: string) => ({
         proposal_id: proposal.id,
         support_type: type,
-        other_text: type === 'Other' ? data.support_other_text : null,
+        other_text: type === 'Other' ? body.support_other_text : null,
       }));
       await supabaseAdmin.from('proposal_support_needs').insert(supportRows);
     }
@@ -170,14 +169,14 @@ proposalsRouter.post('/', authenticate, async (req: Request, res: Response, next
       proposal_id: proposal.id,
       actor_id: req.user!.id,
       action: submit ? 'submitted' : 'draft_created',
-      payload: { title: data.title },
+      payload: { title: body.title },
     });
 
     // Slack notification on submit
     if (submit) {
       notifyNewProposal({
-        title: data.title,
-        department: data.department,
+        title: body.title,
+        department: body.department,
         submitter_name: req.user!.name,
         id: proposal.id,
       }).catch(console.error);
