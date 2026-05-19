@@ -275,3 +275,86 @@ proposalsRouter.patch(
     }
   }
 );
+
+/**
+ * PATCH /proposals/:id/competency-level
+ * Assign AI competency level (0-5) to an approved proposal.
+ */
+proposalsRouter.patch(
+  '/:id/competency-level',
+  authenticate,
+  requireRole('reviewer', 'chair', 'admin'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { level } = req.body;
+      if (typeof level !== 'number' || level < 0 || level > 5) {
+        throw new AppError('Level must be between 0 and 5', 400);
+      }
+
+      const { data: proposal, error: fetchError } = await supabaseAdmin
+        .from('proposals')
+        .select('status')
+        .eq('id', req.params.id)
+        .single();
+
+      if (fetchError || !proposal) throw new AppError('Proposal not found', 404);
+      if (!['approved', 'approved_with_conditions', 'shipped'].includes(proposal.status)) {
+        throw new AppError('Competency level can only be set on approved proposals', 400);
+      }
+
+      const { data: updated, error } = await supabaseAdmin
+        .from('proposals')
+        .update({
+          competency_level: level,
+          competency_level_set_by: req.user!.id,
+          competency_level_set_at: new Date().toISOString(),
+        })
+        .eq('id', req.params.id)
+        .select()
+        .single();
+
+      if (error) throw new AppError(error.message, 500);
+      res.json({ proposal: updated });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /proposals/analytics/competency
+ * Get department competency levels for spider chart.
+ */
+proposalsRouter.get(
+  '/analytics/competency',
+  authenticate,
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('proposals')
+        .select('department, competency_level')
+        .not('competency_level', 'is', null)
+        .in('status', ['approved', 'approved_with_conditions', 'shipped']);
+
+      if (error) throw new AppError(error.message, 500);
+
+      // Calculate average competency per department
+      const deptMap: Record<string, { total: number; count: number }> = {};
+      data?.forEach((p) => {
+        if (!deptMap[p.department]) deptMap[p.department] = { total: 0, count: 0 };
+        deptMap[p.department].total += p.competency_level;
+        deptMap[p.department].count += 1;
+      });
+
+      const competency = Object.entries(deptMap).map(([dept, { total, count }]) => ({
+        department: dept,
+        level: Math.round((total / count) * 10) / 10,
+        proposals: count,
+      }));
+
+      res.json({ competency });
+    } catch (error) {
+      next(error);
+    }
+  }
+);

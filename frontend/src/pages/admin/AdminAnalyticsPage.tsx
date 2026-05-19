@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { api } from '../../lib/api';
 import { getStatusLabel } from '../../lib/status';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { TrendingUp, Clock, FileText, CheckCircle } from 'lucide-react';
 
 interface Analytics {
@@ -10,6 +10,12 @@ interface Analytics {
   by_status: { status: string; count: string }[];
   by_department: { department: string; count: string }[];
   avg_days_to_decision: string | null;
+}
+
+interface CompetencyData {
+  department: string;
+  level: number;
+  proposals: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -30,13 +36,18 @@ const DEPT_COLORS = ['#818cf8', '#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a7
 
 export function AdminAnalyticsPage() {
   const [data, setData] = useState<Analytics | null>(null);
+  const [competency, setCompetency] = useState<CompetencyData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const res = await api.get<Analytics>('/admin/analytics');
-        setData(res);
+        const [analyticsRes, compRes] = await Promise.all([
+          api.get<Analytics>('/admin/analytics'),
+          api.get<{ competency: CompetencyData[] }>('/proposals/analytics/competency'),
+        ]);
+        setData(analyticsRes);
+        setCompetency(compRes.competency);
       } catch (err) { console.error(err); }
       setLoading(false);
     };
@@ -189,6 +200,50 @@ export function AdminAnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Competency Spider Chart */}
+      {competency.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Department AI Competency Levels</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Average AI maturity level per department (L0 AI Aware → L5 AI Native)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <RadarChart data={competency}>
+                <PolarGrid />
+                <PolarAngleAxis dataKey="department" fontSize={11} />
+                <PolarRadiusAxis angle={90} domain={[0, 5]} tickCount={6} fontSize={10} />
+                <Radar
+                  name="Competency Level"
+                  dataKey="level"
+                  stroke="#818cf8"
+                  fill="#818cf8"
+                  fillOpacity={0.3}
+                  strokeWidth={2}
+                />
+                <Tooltip
+                  formatter={(value: any) => {
+                    const labels = ['AI Aware', 'AI Prompted', 'AI Builder', 'AI Integrated', 'AI Orchestrated', 'AI Native'];
+                    return [`L${Math.round(value)} — ${labels[Math.round(value)] || ''}`, 'Level'];
+                  }}
+                />
+                <Legend />
+              </RadarChart>
+            </ResponsiveContainer>
+            <div className="grid grid-cols-6 gap-2 mt-4 text-center">
+              {['L0\nAI Aware', 'L1\nAI Prompted', 'L2\nAI Builder', 'L3\nAI Integrated', 'L4\nAI Orchestrated', 'L5\nAI Native'].map((label, idx) => (
+                <div key={idx} className="text-[10px] text-muted-foreground">
+                  <span className="font-semibold block">L{idx}</span>
+                  {label.split('\n')[1]}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Detailed breakdown */}
       <div className="grid grid-cols-2 gap-6">

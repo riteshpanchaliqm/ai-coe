@@ -11,6 +11,7 @@ import { StatusTimeline } from '../components/StatusTimeline';
 import { StatusActions } from '../components/StatusActions';
 import { RecommendationForm } from '../components/RecommendationForm';
 import { VerdictForm } from '../components/VerdictForm';
+import { CompetencyLevelForm } from '../components/CompetencyLevelForm';
 
 interface Proposal {
   id: string; title: string; department: string; problem_statement: string;
@@ -147,6 +148,15 @@ export function ProposalDetailPage() {
       {/* Verdict Form (Chair only, at awaiting_decision) */}
       {isChair && proposal.status === 'awaiting_decision' && (
         <VerdictForm proposalId={id!} onSubmitted={fetchData} />
+      )}
+
+      {/* Competency Level (reviewers/chair, on approved proposals) */}
+      {isReviewer && ['approved', 'approved_with_conditions', 'shipped'].includes(proposal.status) && (
+        <CompetencyLevelForm
+          proposalId={id!}
+          currentLevel={(proposal as any).competency_level}
+          onUpdated={fetchData}
+        />
       )}
 
       {/* Comments */}
