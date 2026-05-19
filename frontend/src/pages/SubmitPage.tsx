@@ -52,6 +52,7 @@ export function SubmitPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState<FormData>({
     title: '', department: '', problem_statement: '', proposed_solution: '',
@@ -66,6 +67,24 @@ export function SubmitPage() {
   }, []);
 
   const handleSubmit = async () => {
+    // Check required fields are not empty
+    const errs: Record<string, string> = {};
+    if (!form.title.trim()) errs.title = 'Required';
+    if (!form.department) errs.department = 'Required';
+    if (!form.problem_statement.trim()) errs.problem_statement = 'Required';
+    if (!form.proposed_solution.trim()) errs.proposed_solution = 'Required';
+    if (!form.expected_impact.trim()) errs.expected_impact = 'Required';
+    if (!form.current_status) errs.current_status = 'Required';
+    if (!form.urgency) errs.urgency = 'Required';
+    if (form.support_needs.length === 0) errs.support_needs = 'Required';
+
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      const firstKey = Object.keys(errs)[0];
+      document.getElementById(`field-${firstKey}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     setSubmitting(true);
     try {
       await api.post('/proposals', { ...form, submit: true });
@@ -102,10 +121,10 @@ export function SubmitPage() {
             <Label>Your Name</Label>
             <Input value={user?.name || ''} disabled />
           </div>
-          <div>
-            <Label>Department</Label>
-            <Select value={form.department} onValueChange={(val) => updateField('department', val)}>
-              <SelectTrigger>
+          <div id="field-department">
+            <Label>Department *</Label>
+            <Select value={form.department} onValueChange={(val) => { updateField('department', val); setErrors((e) => ({ ...e, department: '' })); }}>
+              <SelectTrigger className={errors.department ? 'border-destructive' : ''}>
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
@@ -114,6 +133,7 @@ export function SubmitPage() {
                 ))}
               </SelectContent>
             </Select>
+            {errors.department && <p className="text-xs text-destructive mt-1">{errors.department}</p>}
           </div>
         </CardContent>
       </Card>
@@ -122,24 +142,28 @@ export function SubmitPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">2. Project Information</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label>Project Title <span className="text-muted-foreground text-xs">({form.title.length}/50)</span></Label>
-            <Input maxLength={50} value={form.title} onChange={(e) => updateField('title', e.target.value)} />
+          <div id="field-title">
+            <Label>Project Title * <span className="text-muted-foreground text-xs">({form.title.length}/50)</span></Label>
+            <Input maxLength={50} value={form.title} onChange={(e) => { updateField('title', e.target.value); setErrors((er) => ({ ...er, title: '' })); }} className={errors.title ? 'border-destructive' : ''} />
+            {errors.title && <p className="text-xs text-destructive mt-1">{errors.title}</p>}
           </div>
-          <div>
-            <Label>Problem Statement <span className="text-muted-foreground text-xs">({form.problem_statement.length}/500)</span></Label>
-            <Textarea maxLength={500} value={form.problem_statement} onChange={(e) => updateField('problem_statement', e.target.value)} rows={3} />
+          <div id="field-problem_statement">
+            <Label>Problem Statement * <span className="text-muted-foreground text-xs">({form.problem_statement.length}/500)</span></Label>
+            <Textarea maxLength={500} value={form.problem_statement} onChange={(e) => { updateField('problem_statement', e.target.value); setErrors((er) => ({ ...er, problem_statement: '' })); }} rows={3} className={errors.problem_statement ? 'border-destructive' : ''} />
+            {errors.problem_statement && <p className="text-xs text-destructive mt-1">{errors.problem_statement}</p>}
           </div>
-          <div>
-            <Label>Proposed Solution <span className="text-muted-foreground text-xs">({form.proposed_solution.length}/500)</span></Label>
-            <Textarea maxLength={500} value={form.proposed_solution} onChange={(e) => updateField('proposed_solution', e.target.value)} rows={3} />
+          <div id="field-proposed_solution">
+            <Label>Proposed Solution * <span className="text-muted-foreground text-xs">({form.proposed_solution.length}/500)</span></Label>
+            <Textarea maxLength={500} value={form.proposed_solution} onChange={(e) => { updateField('proposed_solution', e.target.value); setErrors((er) => ({ ...er, proposed_solution: '' })); }} rows={3} className={errors.proposed_solution ? 'border-destructive' : ''} />
+            {errors.proposed_solution && <p className="text-xs text-destructive mt-1">{errors.proposed_solution}</p>}
           </div>
-          <div>
-            <Label>Expected Impact <span className="text-muted-foreground text-xs">({form.expected_impact.length}/300)</span></Label>
-            <Textarea maxLength={300} value={form.expected_impact} onChange={(e) => updateField('expected_impact', e.target.value)} rows={2} />
+          <div id="field-expected_impact">
+            <Label>Expected Impact * <span className="text-muted-foreground text-xs">({form.expected_impact.length}/300)</span></Label>
+            <Textarea maxLength={300} value={form.expected_impact} onChange={(e) => { updateField('expected_impact', e.target.value); setErrors((er) => ({ ...er, expected_impact: '' })); }} rows={2} className={errors.expected_impact ? 'border-destructive' : ''} />
+            {errors.expected_impact && <p className="text-xs text-destructive mt-1">{errors.expected_impact}</p>}
           </div>
-          <div>
-            <Label>Current Status</Label>
+          <div id="field-current_status">
+            <Label>Current Status *</Label>
             <div className="flex flex-wrap gap-2 mt-1">
               {[
                 { value: 'idea', label: 'Idea' },
@@ -153,15 +177,16 @@ export function SubmitPage() {
                   type="button"
                   variant={form.current_status === s.value ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => updateField('current_status', s.value)}
+                  onClick={() => { updateField('current_status', s.value); setErrors((er) => ({ ...er, current_status: '' })); }}
                 >
                   {s.label}
                 </Button>
               ))}
             </div>
+            {errors.current_status && <p className="text-xs text-destructive mt-1">{errors.current_status}</p>}
           </div>
-          <div>
-            <Label>Timeline / Urgency</Label>
+          <div id="field-urgency">
+            <Label>Timeline / Urgency *</Label>
             <div className="flex flex-wrap gap-2 mt-1">
               {[
                 { value: 'two_weeks', label: '2 Weeks' },
@@ -174,12 +199,13 @@ export function SubmitPage() {
                   type="button"
                   variant={form.urgency === u.value ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => updateField('urgency', u.value)}
+                  onClick={() => { updateField('urgency', u.value); setErrors((er) => ({ ...er, urgency: '' })); }}
                 >
                   {u.label}
                 </Button>
               ))}
             </div>
+            {errors.urgency && <p className="text-xs text-destructive mt-1">{errors.urgency}</p>}
           </div>
           {form.urgency === 'two_weeks' && (
             <div>
@@ -236,21 +262,22 @@ export function SubmitPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">4. Support Needed</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label>What support do you need?</Label>
+          <div id="field-support_needs">
+            <Label>What support do you need? *</Label>
             <div className="grid grid-cols-2 gap-2 mt-2">
               {SUPPORT_TYPES.map((type) => (
                 <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"
                     checked={form.support_needs.includes(type)}
-                    onChange={() => toggleSupport(type)}
+                    onChange={() => { toggleSupport(type); setErrors((er) => ({ ...er, support_needs: '' })); }}
                     className="rounded border-input"
                   />
                   {type}
                 </label>
               ))}
             </div>
+            {errors.support_needs && <p className="text-xs text-destructive mt-1">{errors.support_needs}</p>}
           </div>
           {form.support_needs.includes('Other') && (
             <div>
