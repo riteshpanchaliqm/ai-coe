@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { notifyVerdict } from '../lib/slack';
 
 export const verdictsRouter = Router();
 
@@ -88,6 +89,21 @@ verdictsRouter.post(
         action: 'verdict_posted',
         payload: { decision: data.decision },
       });
+
+      // Notify via Slack
+      const { data: proposalData } = await supabaseAdmin
+        .from('proposals')
+        .select('title, users!submitter_id(email)')
+        .eq('id', data.proposal_id)
+        .single();
+
+      if (proposalData) {
+        notifyVerdict(
+          { title: proposalData.title, id: data.proposal_id, submitter_email: (proposalData.users as any)?.email },
+          data.decision,
+          req.user!.name
+        ).catch(console.error);
+      }
 
       res.status(201).json({ verdict });
     } catch (error) {

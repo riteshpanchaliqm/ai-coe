@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../lib/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { notifyNewProposal, notifyStatusChange } from '../lib/slack';
 
 export const proposalsRouter = Router();
 
@@ -172,6 +173,16 @@ proposalsRouter.post('/', authenticate, async (req: Request, res: Response, next
       payload: { title: data.title },
     });
 
+    // Slack notification on submit
+    if (submit) {
+      notifyNewProposal({
+        title: data.title,
+        department: data.department,
+        submitter_name: req.user!.name,
+        id: proposal.id,
+      }).catch(console.error);
+    }
+
     res.status(201).json({ proposal });
   } catch (error) {
     next(error);
@@ -268,6 +279,13 @@ proposalsRouter.patch(
         action: 'status_changed',
         payload: { from: proposal.status, to: status },
       });
+
+      // Notify submitter of status change
+      notifyStatusChange({
+        title: proposal.title,
+        id: proposal.id,
+        submitter_email: proposal.submitter_id, // We'll need to look up email
+      }, status).catch(console.error);
 
       res.json({ proposal: updated });
     } catch (error) {

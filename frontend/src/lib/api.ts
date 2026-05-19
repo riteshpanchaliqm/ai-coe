@@ -4,14 +4,22 @@ const API_BASE = import.meta.env.VITE_API_BASE_PATH || '/api/v1/ai-coe';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+  let token = data.session?.access_token;
+
+  // If no token or session might be stale, try refreshing
+  if (!token) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    token = refreshed.session?.access_token;
+  }
+
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
 
 async function request<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retry = true
 ): Promise<T> {
   const authHeaders = await getAuthHeaders();
 
@@ -23,6 +31,17 @@ async function request<T>(
       ...options.headers,
     },
   });
+
+  // If 401 and we haven't retried yet, refresh token and retry once
+  if (res.status === 401 && retry) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed.session) {
+      return request<T>(path, options, false);
+    }
+    // Refresh failed — redirect to login
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: { message: 'Request failed' } }));
