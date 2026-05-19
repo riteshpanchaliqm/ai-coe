@@ -3,24 +3,22 @@ import { supabase } from './supabase';
 const API_BASE = import.meta.env.VITE_API_BASE_PATH || '/api/v1/ai-coe';
 
 async function getAccessToken(): Promise<string | null> {
-  // Always get a fresh session — this handles auto-refresh internally
-  const { data: { session }, error } = await supabase.auth.getSession();
-
-  if (error || !session) {
-    // Try explicit refresh
-    const { data: refreshed } = await supabase.auth.refreshSession();
-    return refreshed.session?.access_token || null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      return session.access_token;
+    }
+  } catch {
+    // getSession failed
   }
 
-  // Check if token is about to expire (within 60 seconds)
-  const expiresAt = session.expires_at || 0;
-  const now = Math.floor(Date.now() / 1000);
-  if (expiresAt - now < 60) {
-    const { data: refreshed } = await supabase.auth.refreshSession();
-    return refreshed.session?.access_token || session.access_token;
+  // Try refresh
+  try {
+    const { data } = await supabase.auth.refreshSession();
+    return data.session?.access_token || null;
+  } catch {
+    return null;
   }
-
-  return session.access_token;
 }
 
 async function request<T>(
@@ -31,7 +29,10 @@ async function request<T>(
   const token = await getAccessToken();
 
   if (!token) {
-    window.location.href = '/login';
+    // No token at all — redirect to login
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
     throw new Error('No session');
   }
 
@@ -44,11 +45,15 @@ async function request<T>(
     },
   });
 
-  // If 401 and we haven't retried, force refresh and retry once
   if (res.status === 401 && retry) {
-    const { data: refreshed } = await supabase.auth.refreshSession();
-    if (refreshed.session) {
-      return request<T>(path, options, false);
+    // Token was rejected — force refresh and retry
+    try {
+      const { data } = await supabase.auth.refreshSession();
+      if (data.session) {
+        return request<T>(path, options, false);
+      }
+    } catch {
+      // refresh failed
     }
     window.location.href = '/login';
     throw new Error('Session expired');

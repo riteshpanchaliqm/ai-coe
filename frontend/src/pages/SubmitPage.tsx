@@ -168,18 +168,18 @@ export function SubmitPage() {
             {errors.building_type && <p className="text-xs text-destructive mt-1">{errors.building_type}</p>}
           </div>
           <div id="field-problem_statement">
-            <Label>What problem or pain-points are we solving for? * <span className="text-muted-foreground text-xs">({form.problem_statement.length}/500)</span></Label>
+            <Label>What problem or pain point are you solving? * <span className="text-muted-foreground text-xs">({form.problem_statement.length}/500)</span></Label>
             <Textarea maxLength={500} value={form.problem_statement} onChange={(e) => { updateField('problem_statement', e.target.value); setErrors((er) => ({ ...er, problem_statement: '' })); }} rows={3} className={errors.problem_statement ? 'border-destructive' : ''} />
             {errors.problem_statement && <p className="text-xs text-destructive mt-1">{errors.problem_statement}</p>}
           </div>
           <div id="field-proposed_solution">
-            <Label>What would be the finished version of solution look like? * <span className="text-muted-foreground text-xs">({form.proposed_solution.length}/500)</span></Label>
-            <Textarea maxLength={500} value={form.proposed_solution} onChange={(e) => { updateField('proposed_solution', e.target.value); setErrors((er) => ({ ...er, proposed_solution: '' })); }} rows={3} className={errors.proposed_solution ? 'border-destructive' : ''} placeholder="i.e. what's in the scope?" />
+            <Label>What would the finished solution look like? * <span className="text-muted-foreground text-xs">({form.proposed_solution.length}/500)</span></Label>
+            <Textarea maxLength={500} value={form.proposed_solution} onChange={(e) => { updateField('proposed_solution', e.target.value); setErrors((er) => ({ ...er, proposed_solution: '' })); }} rows={3} className={errors.proposed_solution ? 'border-destructive' : ''} placeholder="i.e. what's in scope?" />
             {errors.proposed_solution && <p className="text-xs text-destructive mt-1">{errors.proposed_solution}</p>}
           </div>
           <div id="field-expected_impact">
-            <Label>What is the outcome expected? * <span className="text-muted-foreground text-xs">({form.expected_impact.length}/300)</span></Label>
-            <Textarea maxLength={300} value={form.expected_impact} onChange={(e) => { updateField('expected_impact', e.target.value); setErrors((er) => ({ ...er, expected_impact: '' })); }} rows={2} className={errors.expected_impact ? 'border-destructive' : ''} placeholder="E.g. reduced turn-around-times, time-savings, ease of use etc." />
+            <Label>What is the expected outcome? * <span className="text-muted-foreground text-xs">({form.expected_impact.length}/300)</span></Label>
+            <Textarea maxLength={300} value={form.expected_impact} onChange={(e) => { updateField('expected_impact', e.target.value); setErrors((er) => ({ ...er, expected_impact: '' })); }} rows={2} className={errors.expected_impact ? 'border-destructive' : ''} placeholder="E.g. reduced turnaround times, time savings, ease of use, etc." />
             {errors.expected_impact && <p className="text-xs text-destructive mt-1">{errors.expected_impact}</p>}
           </div>
           <div id="field-ai_maturity_level">
