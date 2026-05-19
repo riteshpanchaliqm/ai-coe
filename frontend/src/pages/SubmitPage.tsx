@@ -17,6 +17,7 @@ const DEPARTMENTS = [
 ];
 
 const SUPPORT_TYPES = [
+  'Data governance check', 'Access rights & permissions',
   'Idea validation', 'Feasibility check', 'Tool recommendations',
   'Prompt engineering', 'Hands-on pairing', 'MCP/API integration',
   'Demo prep', 'Troubleshooting', 'Other',
@@ -31,9 +32,11 @@ const DATABASE_OPTIONS = ['PostgreSQL', 'Supabase', 'AWS RDS', 'MongoDB', 'MySQL
 interface FormData {
   title: string;
   department: string;
+  building_type: string;
   problem_statement: string;
   proposed_solution: string;
   expected_impact: string;
+  ai_maturity_level: string;
   current_status: string;
   urgency: string;
   urgency_reason: string;
@@ -46,6 +49,7 @@ interface FormData {
   tech_ai_tools: string[];
   tech_integrations: string[];
   other_details: string;
+  doc_link: string;
 }
 
 export function SubmitPage() {
@@ -55,11 +59,11 @@ export function SubmitPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState<FormData>({
-    title: '', department: '', problem_statement: '', proposed_solution: '',
-    expected_impact: '', current_status: '', urgency: '', urgency_reason: '',
+    title: '', department: '', building_type: '', problem_statement: '', proposed_solution: '',
+    expected_impact: '', ai_maturity_level: '', current_status: '', urgency: '', urgency_reason: '',
     support_needs: [], support_other_text: '', where_stuck: '',
     tech_frontend: [], tech_backend: [], tech_database: [], tech_ai_tools: [], tech_integrations: [],
-    other_details: '',
+    other_details: '', doc_link: '',
   });
 
   const updateField = useCallback((field: keyof FormData, value: string | string[]) => {
@@ -71,9 +75,11 @@ export function SubmitPage() {
     const errs: Record<string, string> = {};
     if (!form.title.trim()) errs.title = 'Required';
     if (!form.department) errs.department = 'Required';
+    if (!form.building_type) errs.building_type = 'Required';
     if (!form.problem_statement.trim()) errs.problem_statement = 'Required';
     if (!form.proposed_solution.trim()) errs.proposed_solution = 'Required';
     if (!form.expected_impact.trim()) errs.expected_impact = 'Required';
+    if (!form.ai_maturity_level) errs.ai_maturity_level = 'Required';
     if (!form.current_status) errs.current_status = 'Required';
     if (!form.urgency) errs.urgency = 'Required';
     if (form.support_needs.length === 0) errs.support_needs = 'Required';
@@ -147,20 +153,51 @@ export function SubmitPage() {
             <Input maxLength={50} value={form.title} onChange={(e) => { updateField('title', e.target.value); setErrors((er) => ({ ...er, title: '' })); }} className={errors.title ? 'border-destructive' : ''} />
             {errors.title && <p className="text-xs text-destructive mt-1">{errors.title}</p>}
           </div>
+          <div id="field-building_type">
+            <Label>What are you building? *</Label>
+            <Select value={form.building_type} onValueChange={(val) => { updateField('building_type', val); setErrors((e) => ({ ...e, building_type: '' })); }}>
+              <SelectTrigger className={errors.building_type ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tool_building">Tool Building with AI</SelectItem>
+                <SelectItem value="workflow_automation">Workflow & Automation</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.building_type && <p className="text-xs text-destructive mt-1">{errors.building_type}</p>}
+          </div>
           <div id="field-problem_statement">
-            <Label>Problem Statement * <span className="text-muted-foreground text-xs">({form.problem_statement.length}/500)</span></Label>
+            <Label>What problem or pain-points are we solving for? * <span className="text-muted-foreground text-xs">({form.problem_statement.length}/500)</span></Label>
             <Textarea maxLength={500} value={form.problem_statement} onChange={(e) => { updateField('problem_statement', e.target.value); setErrors((er) => ({ ...er, problem_statement: '' })); }} rows={3} className={errors.problem_statement ? 'border-destructive' : ''} />
             {errors.problem_statement && <p className="text-xs text-destructive mt-1">{errors.problem_statement}</p>}
           </div>
           <div id="field-proposed_solution">
-            <Label>Proposed Solution * <span className="text-muted-foreground text-xs">({form.proposed_solution.length}/500)</span></Label>
-            <Textarea maxLength={500} value={form.proposed_solution} onChange={(e) => { updateField('proposed_solution', e.target.value); setErrors((er) => ({ ...er, proposed_solution: '' })); }} rows={3} className={errors.proposed_solution ? 'border-destructive' : ''} />
+            <Label>What would be the finished version of solution look like? * <span className="text-muted-foreground text-xs">({form.proposed_solution.length}/500)</span></Label>
+            <Textarea maxLength={500} value={form.proposed_solution} onChange={(e) => { updateField('proposed_solution', e.target.value); setErrors((er) => ({ ...er, proposed_solution: '' })); }} rows={3} className={errors.proposed_solution ? 'border-destructive' : ''} placeholder="i.e. what's in the scope?" />
             {errors.proposed_solution && <p className="text-xs text-destructive mt-1">{errors.proposed_solution}</p>}
           </div>
           <div id="field-expected_impact">
-            <Label>Expected Impact * <span className="text-muted-foreground text-xs">({form.expected_impact.length}/300)</span></Label>
-            <Textarea maxLength={300} value={form.expected_impact} onChange={(e) => { updateField('expected_impact', e.target.value); setErrors((er) => ({ ...er, expected_impact: '' })); }} rows={2} className={errors.expected_impact ? 'border-destructive' : ''} />
+            <Label>What is the outcome expected? * <span className="text-muted-foreground text-xs">({form.expected_impact.length}/300)</span></Label>
+            <Textarea maxLength={300} value={form.expected_impact} onChange={(e) => { updateField('expected_impact', e.target.value); setErrors((er) => ({ ...er, expected_impact: '' })); }} rows={2} className={errors.expected_impact ? 'border-destructive' : ''} placeholder="E.g. reduced turn-around-times, time-savings, ease of use etc." />
             {errors.expected_impact && <p className="text-xs text-destructive mt-1">{errors.expected_impact}</p>}
+          </div>
+          <div id="field-ai_maturity_level">
+            <Label>AI Maturity Level *</Label>
+            <Select value={form.ai_maturity_level} onValueChange={(val) => { updateField('ai_maturity_level', val); setErrors((e) => ({ ...e, ai_maturity_level: '' })); }}>
+              <SelectTrigger className={errors.ai_maturity_level ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select AI maturity level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="L0">L0 — AI Aware</SelectItem>
+                <SelectItem value="L1">L1 — AI Prompted</SelectItem>
+                <SelectItem value="L2">L2 — AI Builder</SelectItem>
+                <SelectItem value="L3">L3 — AI Integrated</SelectItem>
+                <SelectItem value="L4">L4 — AI Orchestrated</SelectItem>
+                <SelectItem value="L5">L5 — AI Native</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.ai_maturity_level && <p className="text-xs text-destructive mt-1">{errors.ai_maturity_level}</p>}
           </div>
           <div id="field-current_status">
             <Label>Current Status *</Label>
@@ -221,6 +258,27 @@ export function SubmitPage() {
         <CardHeader><CardTitle className="text-base">3. Tech Stack</CardTitle></CardHeader>
         <CardContent className="space-y-5">
           <MultiSelectWithAdd
+            label="Integrations & Connectors"
+            options={INTEGRATIONS_OPTIONS}
+            selected={form.tech_integrations}
+            onChange={(val) => updateField('tech_integrations', val)}
+            placeholder="Add integration..."
+          />
+          <MultiSelectWithAdd
+            label="AI Tools"
+            options={AI_TOOLS_OPTIONS}
+            selected={form.tech_ai_tools}
+            onChange={(val) => updateField('tech_ai_tools', val)}
+            placeholder="Add AI tool..."
+          />
+          <MultiSelectWithAdd
+            label="Database"
+            options={DATABASE_OPTIONS}
+            selected={form.tech_database}
+            onChange={(val) => updateField('tech_database', val)}
+            placeholder="Add database..."
+          />
+          <MultiSelectWithAdd
             label="Frontend"
             options={FRONTEND_OPTIONS}
             selected={form.tech_frontend}
@@ -233,27 +291,6 @@ export function SubmitPage() {
             selected={form.tech_backend}
             onChange={(val) => updateField('tech_backend', val)}
             placeholder="Add backend tech..."
-          />
-          <MultiSelectWithAdd
-            label="Database"
-            options={DATABASE_OPTIONS}
-            selected={form.tech_database}
-            onChange={(val) => updateField('tech_database', val)}
-            placeholder="Add database..."
-          />
-          <MultiSelectWithAdd
-            label="AI Tools"
-            options={AI_TOOLS_OPTIONS}
-            selected={form.tech_ai_tools}
-            onChange={(val) => updateField('tech_ai_tools', val)}
-            placeholder="Add AI tool..."
-          />
-          <MultiSelectWithAdd
-            label="Integrations"
-            options={INTEGRATIONS_OPTIONS}
-            selected={form.tech_integrations}
-            onChange={(val) => updateField('tech_integrations', val)}
-            placeholder="Add integration..."
           />
         </CardContent>
       </Card>
@@ -292,17 +329,30 @@ export function SubmitPage() {
         </CardContent>
       </Card>
 
-      {/* Section 5: Other Details */}
+      {/* Section 5: Any Other Details */}
       <Card>
         <CardHeader><CardTitle className="text-base">5. Any Other Details</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Add any additional context, links, references, or notes that might help the committee review your proposal..."
-            value={form.other_details}
-            onChange={(e) => updateField('other_details', e.target.value)}
-            rows={4}
-          />
-          <p className="text-xs text-muted-foreground mt-1">Optional</p>
+        <CardContent className="space-y-4">
+          <div>
+            <Textarea
+              placeholder="Add any additional context, links, references, or notes that might help the committee review your proposal..."
+              value={form.other_details}
+              onChange={(e) => updateField('other_details', e.target.value)}
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Optional</p>
+          </div>
+          <div>
+            <Label>Proposal Document Link</Label>
+            <Input
+              value={form.doc_link}
+              onChange={(e) => updateField('doc_link', e.target.value)}
+              placeholder="https://docs.google.com/document/d/..."
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Please provide a Google Doc link with detailed proposal information. Optional but recommended.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
