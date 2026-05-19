@@ -116,7 +116,7 @@ export function SubmitPage() {
         <h1 className="text-2xl font-bold tracking-tight">Submit Proposal</h1>
       </div>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="flex-1 space-y-6">
 
       {/* Section 1 */}

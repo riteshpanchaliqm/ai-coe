@@ -81,7 +81,7 @@ export function AdminAnalyticsPage() {
       <h1 className="text-2xl font-bold tracking-tight">Analytics Dashboard</h1>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -140,7 +140,7 @@ export function AdminAnalyticsPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution - Bar Chart */}
         <Card>
           <CardHeader>
@@ -246,7 +246,7 @@ export function AdminAnalyticsPage() {
       )}
 
       {/* Detailed breakdown */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader><CardTitle className="text-base">Status Breakdown</CardTitle></CardHeader>
           <CardContent className="space-y-2">
