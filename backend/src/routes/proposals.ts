@@ -284,11 +284,19 @@ proposalsRouter.patch(
       });
 
       // Notify submitter of status change
-      notifyStatusChange({
-        title: proposal.title,
-        id: proposal.id,
-        submitter_email: proposal.submitter_id, // We'll need to look up email
-      }, status).catch(console.error);
+      const { data: submitterData } = await supabaseAdmin
+        .from('users')
+        .select('email')
+        .eq('id', proposal.submitter_id)
+        .single();
+
+      if (submitterData?.email) {
+        notifyStatusChange({
+          title: proposal.title,
+          id: proposal.id,
+          submitter_email: submitterData.email,
+        }, status).catch(console.error);
+      }
 
       res.json({ proposal: updated });
     } catch (error) {
