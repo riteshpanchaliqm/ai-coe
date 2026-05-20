@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { api } from '../lib/api';
+
+const API_BASE = import.meta.env.VITE_API_BASE_PATH || '/api/v1/ai-coe';
+const STORAGE_KEY = 'aicoe-auth';
 
 interface User {
   id: string;
@@ -18,72 +20,77 @@ interface AuthState {
   signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+function getTokenFromStorage(): string | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    return parsed?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchMe(token: string): Promise<User | null> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.user;
+  } catch {
+    return null;
+  }
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
   error: null,
 
   initialize: async () => {
-    try {
-      // First try getting existing session
-      let { data: { session } } = await supabase.auth.getSession();
+    // Read token directly from localStorage — no Supabase client call
+    const token = getTokenFromStorage();
 
-      // If session exists but might be stale, force refresh
-      if (session) {
-        const expiresAt = session.expires_at || 0;
-        const now = Math.floor(Date.now() / 1000);
-        if (expiresAt - now < 300) {
-          // Token expires within 5 minutes — refresh it
-          const { data: refreshed } = await supabase.auth.refreshSession();
-          session = refreshed.session;
-        }
-      }
-
-      if (session) {
-        try {
-          const { user } = await api.get<{ user: User }>('/auth/me');
-          set({ user, loading: false });
-        } catch {
-          // API call failed — try refreshing session
-          const { data: refreshed } = await supabase.auth.refreshSession();
-          if (refreshed.session) {
-            try {
-              const { user } = await api.get<{ user: User }>('/auth/me');
-              set({ user, loading: false });
-            } catch {
-              set({ user: null, loading: false });
-            }
-          } else {
-            set({ user: null, loading: false });
-          }
-        }
-      } else {
-        set({ user: null, loading: false });
-      }
-    } catch {
+    if (!token) {
       set({ user: null, loading: false });
+      return;
     }
 
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        try {
-          const { user } = await api.get<{ user: User }>('/auth/me');
-          set({ user, loading: false });
-        } catch {
+    // Fetch user profile from our backend
+    const user = await fetchMe(token);
+
+    if (user) {
+      set({ user, loading: false });
+    } else {
+      // Token might be expired — try refresh
+      try {
+        const { data } = await supabase.auth.refreshSession();
+        if (data.session?.access_token) {
+          const refreshedUser = await fetchMe(data.session.access_token);
+          set({ user: refreshedUser, loading: false });
+        } else {
           set({ user: null, loading: false });
         }
+      } catch {
+        set({ user: null, loading: false });
+      }
+    }
+
+    // Listen for future auth changes (sign in/out from other tabs)
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const u = await fetchMe(session.access_token);
+        set({ user: u, loading: false });
       } else if (event === 'SIGNED_OUT') {
         set({ user: null, loading: false });
       } else if (event === 'TOKEN_REFRESHED' && session) {
-        // Token was refreshed — if we don't have a user yet, fetch it
-        if (!get().user) {
-          try {
-            const { user } = await api.get<{ user: User }>('/auth/me');
-            set({ user, loading: false });
-          } catch {
-            set({ user: null, loading: false });
-          }
+        // Token refreshed in background — update if needed
+        const stored = getTokenFromStorage();
+        if (!stored) {
+          // Storage was cleared somehow
+          set({ user: null, loading: false });
         }
       }
     });
@@ -94,9 +101,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        queryParams: {
-          hd: 'iqm.com',
-        },
+        queryParams: { hd: 'iqm.com' },
       },
     });
     if (error) {
@@ -106,6 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem(STORAGE_KEY);
     set({ user: null });
   },
 }));

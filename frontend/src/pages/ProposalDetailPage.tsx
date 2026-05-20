@@ -20,6 +20,11 @@ interface Proposal {
   urgency: string; urgency_reason: string; status: string;
   submitter_name: string; submitter_email: string; submitted_at: string;
   competency_level: number | null;
+  building_type: string; ai_maturity_level: string; doc_link: string;
+  other_details: string; where_stuck: string;
+  tech_frontend: string[]; tech_backend: string[]; tech_database: string[];
+  tech_ai_tools: string[]; tech_integrations: string[];
+  support_needs?: { support_type: string; other_text: string | null }[];
 }
 
 interface Comment {
@@ -41,10 +46,10 @@ export function ProposalDetailPage() {
     setLoading(true);
     try {
       const [proposalRes, commentsRes] = await Promise.all([
-        api.get<{ proposal: Proposal }>(`/proposals/${id}`),
+        api.get<{ proposal: Proposal; supportNeeds: any[] }>(`/proposals/${id}`),
         api.get<{ comments: Comment[] }>(`/comments?proposal_id=${id}`),
       ]);
-      setProposal(proposalRes.proposal);
+      setProposal({ ...proposalRes.proposal, support_needs: proposalRes.supportNeeds });
       setComments(commentsRes.comments);
     } catch (err) {
       console.error(err);
@@ -149,6 +154,45 @@ export function ProposalDetailPage() {
               <p className="text-sm leading-relaxed">{proposal.expected_impact || '—'}</p>
             </CardContent>
           </Card>
+
+          {proposal.other_details && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Other Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{proposal.other_details}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {proposal.where_stuck && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Where They're Stuck</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{proposal.where_stuck}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {proposal.support_needs && proposal.support_needs.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Support Needed</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {proposal.support_needs.map((s) => (
+                    <Badge key={s.support_type} variant="secondary">
+                      {s.support_type}{s.other_text ? `: ${s.other_text}` : ''}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar - 1 col */}
@@ -158,6 +202,17 @@ export function ProposalDetailPage() {
               <CardTitle className="text-sm text-muted-foreground">Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {(proposal as any).building_type && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Building Type</p>
+                  <p className="text-sm font-medium">
+                    {proposal.building_type === 'tool_building' ? 'Tool Building with AI' :
+                     proposal.building_type === 'workflow_automation' ? 'Workflow & Automation' :
+                     'Other'}
+                  </p>
+                </div>
+              )}
+              {(proposal as any).building_type && <Separator />}
               <div>
                 <p className="text-xs text-muted-foreground mb-0.5">Project Status</p>
                 <p className="text-sm font-medium capitalize">
@@ -180,17 +235,78 @@ export function ProposalDetailPage() {
                   <p className="text-xs text-muted-foreground mt-1">{proposal.urgency_reason}</p>
                 )}
               </div>
+              {proposal.ai_maturity_level && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">AI Maturity Level</p>
+                    <p className="text-sm font-medium">{proposal.ai_maturity_level}</p>
+                  </div>
+                </>
+              )}
               {proposal.competency_level !== null && (
                 <>
                   <Separator />
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">AI Competency Level</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">Competency Level (Committee)</p>
                     <Badge variant="default">L{proposal.competency_level}</Badge>
+                  </div>
+                </>
+              )}
+              {proposal.doc_link && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Document Link</p>
+                    <a href={proposal.doc_link} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">
+                      {proposal.doc_link}
+                    </a>
                   </div>
                 </>
               )}
             </CardContent>
           </Card>
+
+          {/* Tech Stack */}
+          {(proposal.tech_frontend?.length > 0 || proposal.tech_backend?.length > 0 || proposal.tech_database?.length > 0 || proposal.tech_ai_tools?.length > 0 || proposal.tech_integrations?.length > 0) && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-muted-foreground">Tech Stack</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {proposal.tech_integrations?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Integrations</p>
+                    <div className="flex flex-wrap gap-1">{proposal.tech_integrations.map((t) => <Badge key={t} variant="secondary" className="text-[11px]">{t}</Badge>)}</div>
+                  </div>
+                )}
+                {proposal.tech_ai_tools?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">AI Tools</p>
+                    <div className="flex flex-wrap gap-1">{proposal.tech_ai_tools.map((t) => <Badge key={t} variant="secondary" className="text-[11px]">{t}</Badge>)}</div>
+                  </div>
+                )}
+                {proposal.tech_database?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Database</p>
+                    <div className="flex flex-wrap gap-1">{proposal.tech_database.map((t) => <Badge key={t} variant="secondary" className="text-[11px]">{t}</Badge>)}</div>
+                  </div>
+                )}
+                {proposal.tech_frontend?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Frontend</p>
+                    <div className="flex flex-wrap gap-1">{proposal.tech_frontend.map((t) => <Badge key={t} variant="secondary" className="text-[11px]">{t}</Badge>)}</div>
+                  </div>
+                )}
+                {proposal.tech_backend?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Backend</p>
+                    <div className="flex flex-wrap gap-1">{proposal.tech_backend.map((t) => <Badge key={t} variant="secondary" className="text-[11px]">{t}</Badge>)}</div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

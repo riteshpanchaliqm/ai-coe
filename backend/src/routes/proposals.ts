@@ -148,6 +148,10 @@ proposalsRouter.post('/', authenticate, async (req: Request, res: Response, next
         tech_ai_tools: body.tech_ai_tools || [],
         tech_integrations: body.tech_integrations || [],
         other_details: body.other_details || null,
+        building_type: body.building_type || null,
+        ai_maturity_level: body.ai_maturity_level || null,
+        doc_link: body.doc_link || null,
+        where_stuck: body.where_stuck || null,
       })
       .select()
       .single();
