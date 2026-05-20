@@ -1,18 +1,59 @@
 import { supabase } from './supabase';
 
 const API_BASE = import.meta.env.VITE_API_BASE_PATH || '/api/v1/ai-coe';
+const STORAGE_KEY = 'aicoe-auth';
 
+/**
+ * Get access token - tries multiple approaches to avoid hanging.
+ */
 async function getAccessToken(): Promise<string | null> {
+  // Approach 1: Read directly from localStorage (instant, no async)
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      return session.access_token;
+    const stored = localStorage.getItem(`sb-${STORAGE_KEY}-auth-token`);
+    if (!stored) {
+      // Try the default key format
+      const keys = Object.keys(localStorage).filter(k => k.includes('auth-token'));
+      for (const key of keys) {
+        const val = localStorage.getItem(key);
+        if (val) {
+          try {
+            const parsed = JSON.parse(val);
+            if (parsed?.access_token) {
+              // Check if expired
+              const expiresAt = parsed.expires_at || 0;
+              const now = Math.floor(Date.now() / 1000);
+              if (expiresAt > now) {
+                return parsed.access_token;
+              }
+            }
+          } catch { /* not JSON */ }
+        }
+      }
+    } else {
+      const parsed = JSON.parse(stored);
+      if (parsed?.access_token) {
+        const expiresAt = parsed.expires_at || 0;
+        const now = Math.floor(Date.now() / 1000);
+        if (expiresAt > now) {
+          return parsed.access_token;
+        }
+      }
     }
-  } catch {
-    // getSession failed
-  }
+  } catch { /* localStorage read failed */ }
 
-  // Try refresh
+  // Approach 2: Use Supabase client with a timeout
+  try {
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+    ]);
+
+    if (result && 'data' in result && result.data.session?.access_token) {
+      return result.data.session.access_token;
+    }
+  } catch { /* getSession failed */ }
+
+  // Approach 3: Force refresh
   try {
     const { data } = await supabase.auth.refreshSession();
     return data.session?.access_token || null;
@@ -29,7 +70,6 @@ async function request<T>(
   const token = await getAccessToken();
 
   if (!token) {
-    // No token at all — redirect to login
     if (window.location.pathname !== '/login') {
       window.location.href = '/login';
     }
@@ -46,15 +86,12 @@ async function request<T>(
   });
 
   if (res.status === 401 && retry) {
-    // Token was rejected — force refresh and retry
     try {
       const { data } = await supabase.auth.refreshSession();
       if (data.session) {
         return request<T>(path, options, false);
       }
-    } catch {
-      // refresh failed
-    }
+    } catch { /* refresh failed */ }
     window.location.href = '/login';
     throw new Error('Session expired');
   }
